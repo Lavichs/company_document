@@ -36,7 +36,7 @@
 
                         {% if item.obj_type == 'file' %}
                         <div class="card col-sm-2 px-0 mx-1 ">
-                            <a href="/admin/{{ item.id }}">
+                            <a href="/uploads/{{ item.id }}.pdf">
                                 <img class="card-img-top pt-3" src="/resource/images/pdf.png" alt="Card image cap"></a>
                             <div class="card-body px-1 pt-1 pb-0">
                                 <p class="card-title text-center d-flex justify-content-center align-items-center">
@@ -51,7 +51,7 @@
                                 <p class="card-text text-center large  px-6 pb-4"></p>
                             </div>
                             <div class="card-footer px-1 py-1 d-flex flex-row">
-                                <a href="{{ item.id }}" class="btn btn-info btn-sm w-100">Перейти</a>
+                                <a href="/uploads/{{ item.id }}.pdf" class="btn btn-info btn-sm w-100">Перейти</a>
                             </div>
                         </div>
                         {% else %}
