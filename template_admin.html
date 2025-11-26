@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8" />
+    <title>ссылки на расписание РМИС</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+        integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <style>
+        .card-deck {
+            flex-flow: row wrap;
+        }
+
+        .container {
+            font-size: 0.75rem;
+        }
+
+        .small {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 72%;
+        }
+
+        /* overlay при drag-and-drop */
+        #drop-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.55);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+            font-size: 2rem;
+            font-family: 'Montserrat', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div id="data-item" class="row" data="{{ page_id }}">
+            <div class="col-sm-12 col-xl-10 offset-xl-1">
+                <h3 class="my-1 py-1 text-center"><i>{{ page }}</i></h3>
+
+                {% for items in lists %}
+                <div clas="row">
+                    <div class="card-deck mb-2">
+                        {% for item in items %}
+
+                        {% if item.obj_type == 'file' %}
+                        <div class="card col-sm-2 px-0 mx-1 ">
+                            <a href="/admin/{{ item.id }}">
+                                <img class="card-img-top pt-3" src="/resource/images/pdf.png" alt="Card image cap"></a>
+                            <div class="card-body px-1 pt-1 pb-0">
+                                <p class="card-title text-center d-flex justify-content-center align-items-center">
+                                    <i class="mr-2">{{ item.title }}</i>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                        onclick="showRenameForm('{{ item.id }}', '{{ item.title }}')">
+                                        ✏
+                                    </button>
+                                </p>
+                                <div id="rename-form-{{ item.id }}" style="display:none;" class="mt-1 p-1">
+                                    <input type="text" id="rename-input-{{ item.id }}"
+                                        class="form-control form-control-sm mb-1">
+                                    <div class="d-flex">
+                                        <button onclick="saveRename('{{ item.id }}')"
+                                            class="btn btn-success btn-sm w-50 mr-1">Сохранить</button>
+                                        <button onclick="cancelRename('{{ item.id }}')"
+                                            class="btn btn-secondary btn-sm w-50">Отмена</button>
+                                    </div>
+                                </div>
+
+
+                                <p class="card-text text-center large  px-6 pb-4"></p>
+                            </div>
+                            <div class="card-footer px-1 py-1 d-flex flex-row">
+                                <a href="/admin/{{ item.id }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
+                                <button onclick="delete_object(event.target)" data="{{ item.id }}"
+                                    class="btn btn-danger btn-sm w-50">Удалить</button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="card col-sm-2 px-0 mx-1 ">
+                            <a href="/admin/{{ item.id }}">
+                                <img class="card-img-top pt-3" src="/resource/images/open-folder.png"
+                                    alt="Card image cap"></a>
+                            <div class="card-body px-1 pt-1 pb-0">
+                                <p class="card-title text-center d-flex justify-content-center align-items-center">
+                                    <i class="mr-2">{{ item.title }}</i>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                        onclick="showRenameForm('{{ item.id }}', '{{ item.title }}')">
+                                        ✏
+                                    </button>
+                                </p>
+                                <div id="rename-form-{{ item.id }}" style="display:none;" class="mt-1 p-1">
+                                    <input type="text" id="rename-input-{{ item.id }}"
+                                        class="form-control form-control-sm mb-1">
+                                    <div class="d-flex">
+                                        <button onclick="saveRename('{{ item.id }}')"
+                                            class="btn btn-success btn-sm w-50 mr-1">Сохранить</button>
+                                        <button onclick="cancelRename('{{ item.id }}')"
+                                            class="btn btn-secondary btn-sm w-50">Отмена</button>
+                                    </div>
+                                </div>
+
+
+                                <p class="card-text text-center large  px-6 pb-4"></p>
+                            </div>
+                            <div class="card-footer px-1 py-1 d-flex flex-row">
+                                <a href="/admin/{{ item.id }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
+                                <button onclick="delete_object(event.target)" data="{{ item.id }}"
+                                    class="btn btn-danger btn-sm w-50">Удалить</button>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+                <div clas="row">
+                    <div class="card-deck mb-2">
+                        <div class="card col-sm-2 px-0 mx-1" id="add-card">
+                            <img class="card-img-top pt-3 p-3" style="cursor: pointer;"
+                                src="/resource/images/plus_2.png" alt="Card image cap">
+                            <div class="card-body px-1 pt-1 pb-0">
+                                <p class="card-title text-center"><i></i></p>
+                                <p class="card-text text-center large  px-6 pb-4"></p>
+                            </div>
+                            <div class="card-footer px-1 py-1">
+                                <button href="." class="btn btn-secondary btn-sm w-100 ">Добавить</button>
+                            </div>
+                        </div>
+
+                        <!-- Выбор действия -->
+                        <div id="add-options" class="card col-sm-2 px-0 mx-1" style="display:none;">
+                            <div class="card-body d-flex flex-column justify-content-around">
+                                <button class="btn btn-primary btn-sm w-100 mb-3" id="add-dir-btn">Создать
+                                    папку</button>
+                                <button class="btn btn-secondary btn-sm w-100" id="add-file-btn">Загрузить
+                                    файл(ы)</button>
+                            </div>
+                        </div>
+
+                        <!-- Форма: создать директорию -->
+                        <div id="add-dir-form" class="card col-sm-6 px-0 mx-1" style="display:none;">
+                            <!-- style="display:none;" -->
+                            <div class="card-body d-flex flex-column justify-content-around">
+                                <input type="text" class="form-control mb-2" id="dir-name" placeholder="Название папки">
+                                <button class="btn btn-success" id="save-dir-btn">Сохранить</button>
+                            </div>
+                        </div>
+
+                        <!-- Форма: загрузить файлы -->
+                        <div id="add-file-form" class="card col-sm-6 px-0 mx-1" style="display:none;">
+                            <div class="card-body d-flex flex-column justify-content-around">
+                                <input type="file" class="form-control mb-2" id="file-input" multiple>
+                                <button class="btn btn-success" id="save-file-btn">Загрузить</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="drop-overlay">
+        <div>
+            <img src="/resource/images/upload.png" style="width:150px; opacity:0.9;">
+            <div class="text-center mt-3">Отпустите файл(ы) для загрузки</div>
+        </div>
+    </div>
+
+
+    <script>
+        idr = document.getElementById('data-item').getAttribute('data')
+
+        // показать выбор действий
+        document.getElementById("add-card").onclick = function () {
+            document.getElementById("add-options").style.display = "block";
+        };
+
+        // показать форму "директория"
+        document.getElementById("add-dir-btn").onclick = function () {
+            document.getElementById("add-dir-form").style.display = "block";
+            document.getElementById("add-file-form").style.display = "none";
+        };
+
+        // показать форму "файл"
+        document.getElementById("add-file-btn").onclick = function () {
+            document.getElementById("add-file-form").style.display = "block";
+            document.getElementById("add-dir-form").style.display = "none";
+        };
+
+        // отправка: создать директорию
+        document.getElementById("save-dir-btn").onclick = async function () {
+            const name = document.getElementById("dir-name").value;
+
+            const resp = await fetch(`/${idr}/add_folder`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: name })
+            });
+
+            if (resp.ok) window.location.reload()
+            else alert("Ошибка: " + resp.status);
+        };
+
+        // отправка: загрузить файлы
+        document.getElementById("save-file-btn").onclick = async function () {
+            const files = document.getElementById("file-input").files;
+            parent_id = document.getElementById("data-item").getAttribute('data')
+
+            const formData = new FormData();
+            for (let f of files) formData.append("files", f);
+
+            const resp = await fetch(`/${parent_id}/add_file`, {
+                method: "POST",
+                body: formData
+            });
+
+            if (resp.ok) window.location.reload()
+            else alert("Ошибка: " + resp.status);
+        };
+
+        async function delete_object(e) {
+            console.log(e.getAttribute('data'))
+
+            const resp = await fetch(`/${e.getAttribute('data')}`, {
+                method: "DELETE"
+            })
+
+            if (resp.ok) window.location.reload()
+            else alert("Ошибка: " + resp.status);
+        }
+
+        // ================= DRAG & DROP НА ВЕСЬ ЭКРАН ================= //
+
+        const dropOverlay = document.getElementById("drop-overlay");
+        const fileInput = document.getElementById("file-input");
+
+        let dragCounter = 0;
+
+        // показать overlay
+        function showOverlay() {
+            dropOverlay.style.display = "flex";
+        }
+
+        // скрыть overlay
+        function hideOverlay() {
+            dropOverlay.style.display = "none";
+        }
+
+        // ловим события drag на весь документ
+        document.addEventListener("dragenter", e => {
+            e.preventDefault();
+            dragCounter++;
+            showOverlay();
+        });
+
+        document.addEventListener("dragleave", e => {
+            e.preventDefault();
+            dragCounter--;
+            if (dragCounter <= 0) hideOverlay();
+        });
+
+        document.addEventListener("dragover", e => {
+            e.preventDefault();  // обязательно
+        });
+
+        // при drop — открываем форму загрузки
+        document.addEventListener("drop", e => {
+            e.preventDefault();
+            dragCounter = 0;
+            hideOverlay();
+
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files.length === 0) return;
+
+            // показать форму загрузки файлов
+            document.getElementById("add-options").style.display = "none";
+            document.getElementById("add-dir-form").style.display = "none";
+            document.getElementById("add-file-form").style.display = "block";
+
+            // засунуть файлы в input
+            fileInput.files = files;
+
+            // alert(`Вы выбрали ${files.length} файл(ов). Теперь нажмите "Загрузить".`);
+        });
+
+        // ================== ПЕРЕИМЕНОВАНИЕ ================== //
+
+        function showRenameForm(id, currentTitle) {
+            const form = document.getElementById(`rename-form-${id}`);
+            const input = document.getElementById(`rename-input-${id}`);
+            input.value = currentTitle;
+            form.style.display = "block";
+        }
+
+        function cancelRename(id) {
+            document.getElementById(`rename-form-${id}`).style.display = "none";
+        }
+
+        async function saveRename(id) {
+            const newTitle = document.getElementById(`rename-input-${id}`).value;
+
+            const resp = await fetch(`/${id}/rename`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: newTitle })
+            });
+
+            if (resp.ok) {
+                window.location.reload();
+            } else {
+                alert("Ошибка: " + resp.status);
+            }
+        }
+
+
+    </script>
+
+
+</body>
+
+</html>

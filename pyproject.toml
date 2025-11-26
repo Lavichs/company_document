@@ -1,0 +1,18 @@
+[project]
+name = "resources"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiosqlite>=0.21.0",
+    "asyncpg>=0.30.0",
+    "black>=25.11.0",
+    "fastapi>=0.121.2",
+    "jinja2>=3.1.6",
+    "psycopg>=3.2.13",
+    "pydantic-settings>=2.12.0",
+    "python-multipart>=0.0.20",
+    "sqlalchemy>=2.0.44",
+    "uvicorn>=0.38.0",
+]
