@@ -143,7 +143,7 @@ async def get_home(session: SessionDep, request: Request, response_class=HTMLRes
         "template.html",
         {
             "request": request,
-            "lists": list(chunks(items, 6)),
+            "lists": list(chunks(items, 7)),
             "page_id": root_id,
             "page": "Ресурсы",
         },
@@ -175,7 +175,7 @@ async def get_home(session: SessionDep, request: Request, response_class=HTMLRes
         "template_admin.html",
         {
             "request": request,
-            "lists": list(chunks(items, 6)),
+            "lists": list(chunks(items, 7)),
             "page_id": root_id,
             "page": "Ресурсы",
         },
@@ -216,7 +216,7 @@ async def get_folder(
         "template.html",
         {
             "request": request,
-            "lists": list(chunks(items, 6)),
+            "lists": list(chunks(items, 7)),
             "page_id": folder.id,
             "page": folder.title,
         },
@@ -258,7 +258,7 @@ async def get_folder(
         "template_admin.html",
         {
             "request": request,
-            "lists": list(chunks(items, 6)),
+            "lists": list(chunks(items, 7)),
             "page_id": folder.id,
             "page": folder.title,
         },
