@@ -41,6 +41,7 @@ templates = Jinja2Templates(directory=".")
 class FILE_TYPE:
     file = "file"
     folder = "folder"
+    link = "link"
 
 
 async def get_session():
@@ -63,6 +64,7 @@ class ResourceObjectModel(Base):
     )
     obj_type: Mapped[str] = mapped_column(nullable=False)
     title: Mapped[str] = mapped_column(nullable=False)
+    href: Mapped[str] = mapped_column(nullable=True)
 
 
 class ResourceLinkModel(Base):
@@ -86,6 +88,7 @@ class ResourceLinkModel(Base):
 class ObjAddSchema(BaseModel):
     obj_type: str
     title: str
+    href: str | None
 
 
 class ObjSchema(ObjAddSchema):
@@ -141,23 +144,26 @@ async def get_page(
     page_id: uuid.UUID = None,
 ):
     if page_id is None:
-        obj = await resource_object_service.getOneByTitle("Ресурсы")
+        obj: ResourceObjectModel = await resource_object_service.getOneByTitle(
+            "Ресурсы"
+        )
     else:
-        obj = await resource_object_service.getById(page_id)
+        obj: ResourceObjectModel = await resource_object_service.getById(page_id)
 
     obj_child = await resource_link_service.getAllByParent(obj.id)
 
-    items = []
+    items: list[ResourceObjectModel] = []
     for cld in obj_child:
         child_obj = await resource_object_service.getById(cld.child_id)
         items.append(child_obj)
-    
+
     items = sorted(items, key=lambda x: x.obj_type, reverse=True)
     page_data = {
         "request": request,
         "lists": list(chunks(items, 7)),
         "page_id": obj.id,
         "page": "Ресурсы",
+        "href": obj.href,
     }
 
     if is_admin:
@@ -265,18 +271,54 @@ async def add_folder(id_parent: uuid.UUID, session: SessionDep, data: FolderSche
     return {"parent_id": id_parent, "title": data.title}
 
 
+@app.post("/{id_parent}/add_link")
+async def add_file(id_parent: uuid.UUID, session: SessionDep, data: ObjAddSchema):
+    await resource_object_service.getById(id_parent)
+
+    new_obj = ResourceObjectModel(
+        id=uuid.uuid4(), obj_type=FILE_TYPE.link, title=data.title, href=data.href
+    )
+    new_link = ResourceLinkModel(
+        id=uuid.uuid4(), parent_id=id_parent, child_id=new_obj.id
+    )
+
+    session.add(new_obj)
+    session.add(new_link)
+    await session.commit()
+
+    return {"ok": True, "data": new_obj}
+
+
+@app.post("/{id_link}/change_image")
+async def add_file(id_link: uuid.UUID, session: SessionDep, files: list[UploadFile]):
+    obj = await resource_object_service.getById(id_link)
+    file = files[0]
+    print(file)
+
+    if file.filename.split(".")[-1] != "png":
+        raise HTTPException(status_code=400, detail="Not valid PNG")
+
+    pth = Path("resource/links", f"{obj.id}.png")
+    with open(pth, "wb") as f:
+        f.write(file.file.read())
+
+    return {"ok": True, "data": pth}
+
+
 @app.delete("/{obj_id}")
 async def delete_object(obj_id: uuid.UUID, session: SessionDep):
     async def helper(o_id: uuid.UUID):
-        object_res = await resource_object_service(o_id)
+        object_res = await resource_object_service.getById(o_id)
 
-        if object_res.obj_type == "file":
+        if object_res.obj_type == FILE_TYPE.file:
             os.remove(Path("uploads", f"{object_res.id}.pdf"))
-        elif object_res.obj_type == "folder":
-            folder_child = await resource_link_service(o_id)
+        elif object_res.obj_type == FILE_TYPE.folder:
+            folder_child = await resource_link_service.getAllByParent(o_id)
             if folder_child:  # folder has child
                 for children in folder_child:  # перебрать все вложенные объекты
                     await helper(children.child_id)  # удалить все вложенные объекты
+        elif object_res.obj_type == FILE_TYPE.link:
+            os.remove(Path("resource/links", f"{object_res.id}.png"))
         else:
             pass
 
@@ -289,7 +331,7 @@ async def delete_object(obj_id: uuid.UUID, session: SessionDep):
         await session.commit()
         # end helper func
 
-    obj = await resource_object_service(obj_id)
+    obj = await resource_object_service.getById(obj_id)
     await helper(obj.id)
 
     return {"ok": True, "obj.obj_type": obj.obj_type}

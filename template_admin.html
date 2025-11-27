@@ -84,9 +84,41 @@
                             </div>
                         </div>
                         {% else %}
+                        {% if item.obj_type == 'folder' %}
                         <div class="card col-sm-2 px-0 mx-1 ">
                             <a href="/admin/{{ item.id }}">
                                 <img class="card-img-top pt-3" src="/resource/images/open-folder.png"
+                                    alt="Card image cap"></a>
+                            <div class="card-body px-1 pt-1 pb-0">
+                                <p class="card-title text-center d-flex justify-content-center align-items-center">
+                                    <i class="mr-2">{{ item.title }}</i>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                        onclick="showRenameForm('{{ item.id }}', '{{ item.title }}')">
+                                        ✏
+                                    </button>
+                                </p>
+                                <div id="rename-form-{{ item.id }}" style="display:none;" class="mt-1 p-1">
+                                    <input type="text" id="rename-input-{{ item.id }}"
+                                        class="form-control form-control-sm mb-1">
+                                    <div class="d-flex">
+                                        <button onclick="saveRename('{{ item.id }}')"
+                                            class="btn btn-success btn-sm w-50 mr-1">Сохранить</button>
+                                        <button onclick="cancelRename('{{ item.id }}')"
+                                            class="btn btn-secondary btn-sm w-50">Отмена</button>
+                                    </div>
+                                </div>
+                                <p class="card-text text-center large  px-6 pb-4"></p>
+                            </div>
+                            <div class="card-footer px-1 py-1 d-flex flex-row">
+                                <a href="/admin/{{ item.id }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
+                                <button onclick="delete_object(event.target)" data="{{ item.id }}"
+                                    class="btn btn-danger btn-sm w-50">Удалить</button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="card col-sm-2 px-0 mx-1 ">
+                            <a href="/admin/{{ item.id }}">
+                                <img class="card-img-top pt-3" src="/resource/links/{{ item.id }}.png"
                                     alt="Card image cap"></a>
                             <div class="card-body px-1 pt-1 pb-0">
                                 <p class="card-title text-center d-flex justify-content-center align-items-center">
@@ -117,6 +149,7 @@
                             </div>
                         </div>
                         {% endif %}
+                        {% endif %}
 
                         {% endfor %}
                     </div>
@@ -141,8 +174,10 @@
                             <div class="card-body d-flex flex-column justify-content-around">
                                 <button class="btn btn-primary btn-sm w-100 mb-3" id="add-dir-btn">Создать
                                     папку</button>
-                                <button class="btn btn-secondary btn-sm w-100" id="add-file-btn">Загрузить
+                                <button class="btn btn-secondary btn-sm w-100 mb-3" id="add-file-btn">Загрузить
                                     файл(ы)</button>
+                                <button class="btn btn-secondary btn-sm w-100" id="add-link-btn">Добавить
+                                    ссылку</button>
                             </div>
                         </div>
 
@@ -160,6 +195,16 @@
                             <div class="card-body d-flex flex-column justify-content-around">
                                 <input type="file" class="form-control mb-2" id="file-input" multiple>
                                 <button class="btn btn-success" id="save-file-btn">Загрузить</button>
+                            </div>
+                        </div>
+
+                        <!-- Форма: создать ссылку -->
+                        <div id="add-link-form" class="card col-sm-6 px-0 mx-1" style="display:none;">
+                            <div class="card-body d-flex flex-column justify-content-around">
+                                <input type="text" class="form-control mb-2" id="link-name" placeholder="Название">
+                                <input type="text" class="form-control mb-2" id="link-href" placeholder="Ссылка">
+                                <input type="file" class="form-control mb-2" id="link-input">
+                                <button class="btn btn-success" id="save-link-btn">Загрузить</button>
                             </div>
                         </div>
                     </div>
@@ -189,12 +234,21 @@
         document.getElementById("add-dir-btn").onclick = function () {
             document.getElementById("add-dir-form").style.display = "block";
             document.getElementById("add-file-form").style.display = "none";
+            document.getElementById("add-link-form").style.display = "none";
         };
 
         // показать форму "файл"
         document.getElementById("add-file-btn").onclick = function () {
             document.getElementById("add-file-form").style.display = "block";
             document.getElementById("add-dir-form").style.display = "none";
+            document.getElementById("add-link-form").style.display = "none";
+        };
+
+        // показать форму "ссылка"
+        document.getElementById("add-link-btn").onclick = function () {
+            document.getElementById("add-link-form").style.display = "block";
+            document.getElementById("add-dir-form").style.display = "none";
+            document.getElementById("add-file-form").style.display = "none";
         };
 
         // отправка: создать директорию
@@ -223,6 +277,44 @@
                 method: "POST",
                 body: formData
             });
+
+            if (resp.ok) window.location.reload()
+            else alert("Ошибка: " + resp.status);
+        };
+
+        // отправка: загрузить ссылку
+        document.getElementById("save-link-btn").onclick = async function () {
+            const files = document.getElementById("link-input").files;
+            parent_id = document.getElementById("data-item").getAttribute('data')
+
+            const formData = new FormData();
+            for (let f of files) formData.append("files", f);
+
+            const name = document.getElementById("link-name").value;
+            const href = document.getElementById("link-href").value;
+
+            let resp = await fetch(`/${parent_id}/add_link`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: name,
+                    obj_type: 'link',
+                    href: href
+                })
+            });
+
+            let dta = await resp.json()
+            let data = dta.data
+            console.log(data)
+
+            resp = await fetch(`/${data.id}/change_image`, {
+                method: "POST",
+                body: formData
+            });
+
+            dta = await resp.json()
+            data = dta.data
+            console.log(data)
 
             if (resp.ok) window.location.reload()
             else alert("Ошибка: " + resp.status);
