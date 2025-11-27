@@ -117,7 +117,7 @@
                         </div>
                         {% else %}
                         <div class="card col-sm-2 px-0 mx-1 ">
-                            <a href="/admin/{{ item.id }}">
+                            <a href="{{ item.href }}">
                                 <img class="card-img-top pt-3" src="/resource/links/{{ item.id }}.png"
                                     alt="Card image cap"></a>
                             <div class="card-body px-1 pt-1 pb-0">
@@ -143,7 +143,7 @@
                                 <p class="card-text text-center large  px-6 pb-4"></p>
                             </div>
                             <div class="card-footer px-1 py-1 d-flex flex-row">
-                                <a href="/admin/{{ item.id }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
+                                <a href="{{ item.href }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
                                 <button onclick="delete_object(event.target)" data="{{ item.id }}"
                                     class="btn btn-danger btn-sm w-50">Удалить</button>
                             </div>
