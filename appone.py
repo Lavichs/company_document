@@ -7,7 +7,7 @@ import pprint
 import os
 from pathlib import Path
 from pydantic import BaseModel
-from fastapi import FastAPI, Depends, UploadFile, Request
+from fastapi import FastAPI, Depends, UploadFile, Request, HTTPException
 from typing import Annotated
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -100,6 +100,78 @@ class ObjectRenameSchema(BaseModel):
     title: str
 
 
+class ResourceObjectService:
+    async def getById(self, id: uuid.UUID) -> ResourceObjectModel:
+        async with new_session() as session:
+            result = await session.execute(
+                select(ResourceObjectModel).where(ResourceObjectModel.id == id)
+            )
+            result = result.first()
+            if result is None:
+                raise HTTPException(status_code=400, detail="Not found")
+            return result[0]
+
+    async def getOneByTitle(self, title: str) -> ResourceObjectModel:
+        async with new_session() as session:
+            result = await session.execute(
+                select(ResourceObjectModel).where(ResourceObjectModel.title == title)
+            )
+            return result.first()[0]
+
+
+class ResourceLinkService:
+    async def getAllByParent(self, parent_id: uuid.UUID) -> list[ResourceObjectModel]:
+        async with new_session() as session:
+            result = await session.execute(
+                select(ResourceLinkModel).where(
+                    ResourceLinkModel.parent_id == parent_id
+                )
+            )
+            return result.scalars().all()
+
+
+resource_object_service = ResourceObjectService()
+resource_link_service = ResourceLinkService()
+
+
+async def get_page(
+    session,
+    request: Request,
+    is_admin: bool = False,
+    page_id: uuid.UUID = None,
+):
+    if page_id is None:
+        obj = await resource_object_service.getOneByTitle("Ресурсы")
+    else:
+        obj = await resource_object_service.getById(page_id)
+
+    obj_child = await resource_link_service.getAllByParent(obj.id)
+
+    items = []
+    for cld in obj_child:
+        child_obj = await resource_object_service.getById(cld.child_id)
+        items.append(child_obj)
+    
+    items = sorted(items, key=lambda x: x.obj_type, reverse=True)
+    page_data = {
+        "request": request,
+        "lists": list(chunks(items, 7)),
+        "page_id": obj.id,
+        "page": "Ресурсы",
+    }
+
+    if is_admin:
+        return templates.TemplateResponse(
+            "template_admin.html",
+            page_data,
+        )
+    else:
+        return templates.TemplateResponse(
+            "template.html",
+            page_data,
+        )
+
+
 @app.post("/setup_database")
 async def setup_database():
     async with engine.begin() as conn:
@@ -120,66 +192,13 @@ async def setup_database():
 
 @app.get("/")
 async def get_home(session: SessionDep, request: Request, response_class=HTMLResponse):
-    root_obj = await session.execute(
-        select(ResourceObjectModel).where(ResourceObjectModel.title == "Ресурсы")
-    )
-    root_id = root_obj.first()[0].id
-    res = await session.execute(
-        select(ResourceLinkModel).where(ResourceLinkModel.parent_id == root_id)
-    )
-    root_child = res.scalars().all()
-
-    items = []
-    for cld in root_child:
-        children = await session.execute(
-            select(ResourceObjectModel).where(ResourceObjectModel.id == cld.child_id)
-        )
-        child_obj = children.first()[0]
-        items.append(child_obj)
-    
-    items = sorted(items, key=lambda x: x.obj_type, reverse=True)
-
-    return templates.TemplateResponse(
-        "template.html",
-        {
-            "request": request,
-            "lists": list(chunks(items, 7)),
-            "page_id": root_id,
-            "page": "Ресурсы",
-        },
-    )
+    return await get_page(session, request)
 
 
 @app.get("/admin")
 async def get_home(session: SessionDep, request: Request, response_class=HTMLResponse):
-    root_obj = await session.execute(
-        select(ResourceObjectModel).where(ResourceObjectModel.title == "Ресурсы")
-    )
-    root_id = root_obj.first()[0].id
-    res = await session.execute(
-        select(ResourceLinkModel).where(ResourceLinkModel.parent_id == root_id)
-    )
-    root_child = res.scalars().all()
+    return await get_page(session, request, is_admin=True)
 
-    items = []
-    for cld in root_child:
-        children = await session.execute(
-            select(ResourceObjectModel).where(ResourceObjectModel.id == cld.child_id)
-        )
-        child_obj = children.first()[0]
-        items.append(child_obj)
-    
-    items = sorted(items, key=lambda x: x.obj_type, reverse=True)
-
-    return templates.TemplateResponse(
-        "template_admin.html",
-        {
-            "request": request,
-            "lists": list(chunks(items, 7)),
-            "page_id": root_id,
-            "page": "Ресурсы",
-        },
-    )
 
 @app.get("/{id_folder}")
 async def get_folder(
@@ -188,39 +207,7 @@ async def get_folder(
     request: Request,
     response_class=HTMLResponse,
 ):
-    if id_folder == "":
-        folder_obj = await session.execute(
-            select(ResourceObjectModel).where(ResourceObjectModel.title == "Ресурсы")
-        )
-    else:
-        folder_obj = await session.execute(
-            select(ResourceObjectModel).where(ResourceObjectModel.id == id_folder)
-        )
-    folder = folder_obj.first()[0]
-    res = await session.execute(
-        select(ResourceLinkModel).where(ResourceLinkModel.parent_id == folder.id)
-    )
-    folder_child = res.scalars().all()
-
-    items = []
-    for cld in folder_child:
-        children = await session.execute(
-            select(ResourceObjectModel).where(ResourceObjectModel.id == cld.child_id)
-        )
-        child_obj = children.first()[0]
-        items.append(child_obj)
-    
-    items = sorted(items, key=lambda x: x.obj_type, reverse=True)
-
-    return templates.TemplateResponse(
-        "template.html",
-        {
-            "request": request,
-            "lists": list(chunks(items, 7)),
-            "page_id": folder.id,
-            "page": folder.title,
-        },
-    )
+    return await get_page(session, request, page_id=id_folder)
 
 
 @app.get("/admin/{id_folder}")
@@ -230,51 +217,14 @@ async def get_folder(
     request: Request,
     response_class=HTMLResponse,
 ):
-    if id_folder == "":
-        folder_obj = await session.execute(
-            select(ResourceObjectModel).where(ResourceObjectModel.title == "Ресурсы")
-        )
-    else:
-        folder_obj = await session.execute(
-            select(ResourceObjectModel).where(ResourceObjectModel.id == id_folder)
-        )
-    folder = folder_obj.first()[0]
-    res = await session.execute(
-        select(ResourceLinkModel).where(ResourceLinkModel.parent_id == folder.id)
-    )
-    folder_child = res.scalars().all()
-
-    items = []
-    for cld in folder_child:
-        children = await session.execute(
-            select(ResourceObjectModel).where(ResourceObjectModel.id == cld.child_id)
-        )
-        child_obj = children.first()[0]
-        items.append(child_obj)
-    
-    items = sorted(items, key=lambda x: x.obj_type, reverse=True)
-
-    return templates.TemplateResponse(
-        "template_admin.html",
-        {
-            "request": request,
-            "lists": list(chunks(items, 7)),
-            "page_id": folder.id,
-            "page": folder.title,
-        },
-    )
+    return await get_page(session, request, page_id=id_folder, is_admin=True)
 
 
 @app.post("/{id_parent}/add_file")
 async def add_file(id_parent: uuid.UUID, session: SessionDep, files: list[UploadFile]):
-    result = await session.execute(
-        select(ResourceObjectModel).where(ResourceObjectModel.id == id_parent)
-    )
-    if result.first() is None:
-        return "Not found"
+    await resource_object_service.getById(id_parent)
 
     for file in files:
-        print(file.filename)
         new_obj = ResourceObjectModel(
             id=uuid.uuid4(),
             obj_type=FILE_TYPE.file,
@@ -288,7 +238,6 @@ async def add_file(id_parent: uuid.UUID, session: SessionDep, files: list[Upload
         with open(pth, "wb") as f:
             f.write(file.file.read())
 
-        print(new_obj)
         session.add(new_obj)
         session.add(new_link)
         await session.commit()
@@ -298,11 +247,7 @@ async def add_file(id_parent: uuid.UUID, session: SessionDep, files: list[Upload
 
 @app.post("/{id_parent}/add_folder")
 async def add_folder(id_parent: uuid.UUID, session: SessionDep, data: FolderSchema):
-    result = await session.execute(
-        select(ResourceObjectModel).where(ResourceObjectModel.id == id_parent)
-    )
-    if result.first() is None:
-        return "Not found"
+    await resource_object_service.getById(id_parent)
 
     new_obj = ResourceObjectModel(
         id=uuid.uuid4(),
@@ -313,7 +258,6 @@ async def add_folder(id_parent: uuid.UUID, session: SessionDep, data: FolderSche
         id=uuid.uuid4(), parent_id=id_parent, child_id=new_obj.id
     )
 
-    print(new_obj)
     session.add(new_obj)
     session.add(new_link)
     await session.commit()
@@ -324,21 +268,15 @@ async def add_folder(id_parent: uuid.UUID, session: SessionDep, data: FolderSche
 @app.delete("/{obj_id}")
 async def delete_object(obj_id: uuid.UUID, session: SessionDep):
     async def helper(o_id: uuid.UUID):
-        res = await session.execute(
-            select(ResourceObjectModel).where(ResourceObjectModel.id == o_id)
-        )
-        object_res = res.first()[0]
+        object_res = await resource_object_service(o_id)
 
         if object_res.obj_type == "file":
             os.remove(Path("uploads", f"{object_res.id}.pdf"))
         elif object_res.obj_type == "folder":
-            res = await session.execute(
-                select(ResourceLinkModel).where(ResourceLinkModel.parent_id == o_id)
-            )
-            folder_child = res.scalars().all()
-            if folder_child:    # folder has child
-                for children in folder_child:   # перебрать все вложенные объекты
-                    await helper(children.child_id)   # удалить все вложенные объекты
+            folder_child = await resource_link_service(o_id)
+            if folder_child:  # folder has child
+                for children in folder_child:  # перебрать все вложенные объекты
+                    await helper(children.child_id)  # удалить все вложенные объекты
         else:
             pass
 
@@ -351,31 +289,19 @@ async def delete_object(obj_id: uuid.UUID, session: SessionDep):
         await session.commit()
         # end helper func
 
-    result = await session.execute(
-        select(ResourceObjectModel).where(ResourceObjectModel.id == obj_id)
-    )
-    obj = result.first()
-    if obj is None:
-        return "Not found"
-    obj = obj[0]
+    obj = await resource_object_service(obj_id)
     await helper(obj.id)
 
     return {"ok": True, "obj.obj_type": obj.obj_type}
 
 
-@app.put('/{obj_id}/rename')
-async def rename_object(obj_id: uuid.UUID, session: SessionDep, data: ObjectRenameSchema):
-    result = await session.execute(
-        select(ResourceObjectModel).where(ResourceObjectModel.id == obj_id)
-    )
-    obj = result.first()
-    if obj is None:
-        return "Not found"
-    
-    obj = obj[0]
+@app.put("/{obj_id}/rename")
+async def rename_object(
+    obj_id: uuid.UUID, session: SessionDep, data: ObjectRenameSchema
+):
+    obj = await resource_object_service(obj_id)
 
     obj.title = data.title
     await session.commit()
 
     return {"ok": True}
-
