@@ -54,13 +54,18 @@
                         {% if item.obj_type == 'file' %}
                         <div class="card col-sm-2 px-0 mx-1 ">
                             <a href="/admin/{{ item.id }}">
-                                <img class="card-img-top pt-3" src="/resource/images/pdf.png" alt="Card image cap"></a>
+                                <img class="card-img-top pt-3" src="{{ item.image }}" alt="Card image cap"></a>
                             <div class="card-body px-1 pt-1 pb-0">
                                 <p class="card-title text-center d-flex justify-content-center align-items-center">
                                     <i class="mr-2">{{ item.title }}</i>
                                     <button class="btn btn-sm btn-outline-secondary py-0 px-1"
-                                        onclick="showRenameForm('{{ item.id }}', '{{ item.title }}')">
+                                        onclick="showRenameForm('{{ item.id }}', '{{ item.title }}')"
+                                        title="Переименовать">
                                         ✏
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                        onclick="showChangeImage('{{ item.id }}')" title="Изменить изображение">
+                                        🖼
                                     </button>
                                 </p>
                                 <div id="rename-form-{{ item.id }}" style="display:none;" class="mt-1 p-1">
@@ -73,8 +78,16 @@
                                             class="btn btn-secondary btn-sm w-50">Отмена</button>
                                     </div>
                                 </div>
-
-
+                                <div id="changeimg-form-{{ item.id }}" style="display:none;" class="mt-1 p-1">
+                                    <input type="file" class="form-control form-control-sm mb-2"
+                                        id="changeimg-input-{{ item.id }}">
+                                    <div class="d-flex">
+                                        <button onclick="saveChangeImg('{{ item.id }}')"
+                                            class="btn btn-success btn-sm w-50 mr-1">Сохранить</button>
+                                        <button onclick="cancelChangeImg('{{ item.id }}')"
+                                            class="btn btn-secondary btn-sm w-50">Отмена</button>
+                                    </div>
+                                </div>
                                 <p class="card-text text-center large  px-6 pb-4"></p>
                             </div>
                             <div class="card-footer px-1 py-1 d-flex flex-row">
@@ -87,14 +100,17 @@
                         {% if item.obj_type == 'folder' %}
                         <div class="card col-sm-2 px-0 mx-1 ">
                             <a href="/admin/{{ item.id }}">
-                                <img class="card-img-top pt-3" src="/resource/images/open-folder.png"
-                                    alt="Card image cap"></a>
+                                <img class="card-img-top pt-3" src="{{ item.image }}" alt="Card image cap"></a>
                             <div class="card-body px-1 pt-1 pb-0">
                                 <p class="card-title text-center d-flex justify-content-center align-items-center">
                                     <i class="mr-2">{{ item.title }}</i>
                                     <button class="btn btn-sm btn-outline-secondary py-0 px-1"
                                         onclick="showRenameForm('{{ item.id }}', '{{ item.title }}')">
                                         ✏
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                        onclick="showChangeImage('{{ item.id }}')" title="Изменить изображение">
+                                        🖼
                                     </button>
                                 </p>
                                 <div id="rename-form-{{ item.id }}" style="display:none;" class="mt-1 p-1">
@@ -104,6 +120,16 @@
                                         <button onclick="saveRename('{{ item.id }}')"
                                             class="btn btn-success btn-sm w-50 mr-1">Сохранить</button>
                                         <button onclick="cancelRename('{{ item.id }}')"
+                                            class="btn btn-secondary btn-sm w-50">Отмена</button>
+                                    </div>
+                                </div>
+                                <div id="changeimg-form-{{ item.id }}" style="display:none;" class="mt-1 p-1">
+                                    <input type="file" class="form-control form-control-sm mb-2"
+                                        id="changeimg-input-{{ item.id }}">
+                                    <div class="d-flex">
+                                        <button onclick="saveChangeImg('{{ item.id }}')"
+                                            class="btn btn-success btn-sm w-50 mr-1">Сохранить</button>
+                                        <button onclick="cancelChangeImg('{{ item.id }}')"
                                             class="btn btn-secondary btn-sm w-50">Отмена</button>
                                     </div>
                                 </div>
@@ -118,14 +144,17 @@
                         {% else %}
                         <div class="card col-sm-2 px-0 mx-1 ">
                             <a href="{{ item.href }}">
-                                <img class="card-img-top pt-3" src="/resource/links/{{ item.id }}.png"
-                                    alt="Card image cap"></a>
+                                <img class="card-img-top pt-3" src="{{ item.image }}" alt="Card image cap"></a>
                             <div class="card-body px-1 pt-1 pb-0">
                                 <p class="card-title text-center d-flex justify-content-center align-items-center">
                                     <i class="mr-2">{{ item.title }}</i>
                                     <button class="btn btn-sm btn-outline-secondary py-0 px-1"
                                         onclick="showRenameForm('{{ item.id }}', '{{ item.title }}')">
                                         ✏
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                        onclick="showChangeImage('{{ item.id }}')" title="Изменить изображение">
+                                        🖼
                                     </button>
                                 </p>
                                 <div id="rename-form-{{ item.id }}" style="display:none;" class="mt-1 p-1">
@@ -138,8 +167,16 @@
                                             class="btn btn-secondary btn-sm w-50">Отмена</button>
                                     </div>
                                 </div>
-
-
+                                <div id="changeimg-form-{{ item.id }}" style="display:none;" class="mt-1 p-1">
+                                    <input type="file" class="form-control form-control-sm mb-2"
+                                        id="changeimg-input-{{ item.id }}">
+                                    <div class="d-flex">
+                                        <button onclick="saveChangeImg('{{ item.id }}')"
+                                            class="btn btn-success btn-sm w-50 mr-1">Сохранить</button>
+                                        <button onclick="cancelChangeImg('{{ item.id }}')"
+                                            class="btn btn-secondary btn-sm w-50">Отмена</button>
+                                    </div>
+                                </div>
                                 <p class="card-text text-center large  px-6 pb-4"></p>
                             </div>
                             <div class="card-footer px-1 py-1 d-flex flex-row">
@@ -278,8 +315,10 @@
                 body: formData
             });
 
+            const resp_data = await resp.json()
+
             if (resp.ok) window.location.reload()
-            else alert("Ошибка: " + resp.status);
+            else alert("Ошибка: " + resp_data.detail);
         };
 
         // отправка: загрузить ссылку
@@ -390,6 +429,7 @@
         // ================== ПЕРЕИМЕНОВАНИЕ ================== //
 
         function showRenameForm(id, currentTitle) {
+            document.getElementById(`changeimg-form-${id}`).style.display = "none";
             const form = document.getElementById(`rename-form-${id}`);
             const input = document.getElementById(`rename-input-${id}`);
             input.value = currentTitle;
@@ -414,6 +454,38 @@
             } else {
                 alert("Ошибка: " + resp.status);
             }
+        }
+
+        // ================== ЗАМЕНА ИЗОБРАЖЕНИЯ ================== //
+
+        function showChangeImage(id) {
+            document.getElementById(`rename-form-${id}`).style.display = "none";
+            const form = document.getElementById(`changeimg-form-${id}`);
+            const input = document.getElementById(`changeimg-input-${id}`);
+            // input.value = currentTitle;
+            form.style.display = "block";
+        }
+
+        function cancelChangeImg(id) {
+            document.getElementById(`changeimg-form-${id}`).style.display = "none";
+        }
+
+        async function saveChangeImg(id) {
+            const files = document.getElementById(`changeimg-input-${id}`).files;
+
+            const formData = new FormData();
+            for (let f of files) formData.append("files", f);
+
+            let resp = await fetch(`/${id}/change_image`, {
+                method: "POST",
+                body: formData
+            });
+
+            let dta = await resp.json()
+            console.log(dta.data)
+
+            if (resp.ok) window.location.reload()
+            else alert("Ошибка: " + dta.detail);
         }
 
 

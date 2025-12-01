@@ -43,6 +43,12 @@ class FILE_TYPE:
     folder = "folder"
     link = "link"
 
+DEFAULT_IMAGES = {
+    FILE_TYPE.folder: 'resource/images/folder.png',
+    FILE_TYPE.file: 'resource/images/pdf.png',
+    FILE_TYPE.link: '',
+}
+
 
 async def get_session():
     async with new_session() as session:
@@ -65,6 +71,7 @@ class ResourceObjectModel(Base):
     obj_type: Mapped[str] = mapped_column(nullable=False)
     title: Mapped[str] = mapped_column(nullable=False)
     href: Mapped[str] = mapped_column(nullable=True)
+    image: Mapped[str] = mapped_column(nullable=False)
 
 
 class ResourceLinkModel(Base):
@@ -112,14 +119,32 @@ class ResourceObjectService:
             result = result.first()
             if result is None:
                 raise HTTPException(status_code=400, detail="Not found")
-            return result[0]
+        return result[0]
 
     async def getOneByTitle(self, title: str) -> ResourceObjectModel:
         async with new_session() as session:
             result = await session.execute(
                 select(ResourceObjectModel).where(ResourceObjectModel.title == title)
             )
-            return result.first()[0]
+        return result.first()[0]
+
+    async def create(self, id_parent, obj_type, obj_id, title, href=None):
+        async with new_session() as session:
+            new_obj = ResourceObjectModel(
+                id=obj_id,
+                obj_type=obj_type,
+                title=title,
+                href=href,
+                image=DEFAULT_IMAGES[obj_type]
+            )
+            new_link = ResourceLinkModel(
+                id=uuid.uuid4(), parent_id=id_parent, child_id=obj_id
+            )
+
+            session.add(new_obj)
+            session.add(new_link)
+            await session.commit()
+        return new_obj
 
 
 class ResourceLinkService:
@@ -185,13 +210,12 @@ async def setup_database():
         await conn.run_sync(Base.metadata.create_all)
 
     async with new_session() as session:
-        new_obj = ResourceObjectModel(
-            id=uuid.uuid4(),
+        await resource_object_service.create(
+            id_parent=uuid.uuid4(),
             obj_type=FILE_TYPE.folder,
+            obj_id=uuid.uuid4(),
             title="Ресурсы",
         )
-        session.add(new_obj)
-        await session.commit()
 
     return {"ok": True}
 
@@ -231,22 +255,19 @@ async def add_file(id_parent: uuid.UUID, session: SessionDep, files: list[Upload
     await resource_object_service.getById(id_parent)
 
     for file in files:
-        new_obj = ResourceObjectModel(
-            id=uuid.uuid4(),
+        if file.filename.split(".")[-1] != "pdf":
+            raise HTTPException(status_code=400, detail="Only a PDF file is required")
+
+        new_obj_id = uuid.uuid4()
+        await resource_object_service.create(
+            id_parent=id_parent,
             obj_type=FILE_TYPE.file,
+            obj_id=new_obj_id,
             title=file.filename.split(".")[0],
         )
-        new_link = ResourceLinkModel(
-            id=uuid.uuid4(), parent_id=id_parent, child_id=new_obj.id
-        )
-
-        pth = Path("uploads", f"{new_obj.id}.{file.filename.split(".")[-1]}")
+        pth = Path("uploads", f"{new_obj_id}.{file.filename.split(".")[-1]}")
         with open(pth, "wb") as f:
             f.write(file.file.read())
-
-        session.add(new_obj)
-        session.add(new_link)
-        await session.commit()
 
     return {"ok": True}
 
@@ -255,18 +276,13 @@ async def add_file(id_parent: uuid.UUID, session: SessionDep, files: list[Upload
 async def add_folder(id_parent: uuid.UUID, session: SessionDep, data: FolderSchema):
     await resource_object_service.getById(id_parent)
 
-    new_obj = ResourceObjectModel(
-        id=uuid.uuid4(),
+    new_obj_id = uuid.uuid4()
+    await resource_object_service.create(
+        id_parent=id_parent,
         obj_type=FILE_TYPE.folder,
+        obj_id=new_obj_id,
         title=data.title,
     )
-    new_link = ResourceLinkModel(
-        id=uuid.uuid4(), parent_id=id_parent, child_id=new_obj.id
-    )
-
-    session.add(new_obj)
-    session.add(new_link)
-    await session.commit()
 
     return {"parent_id": id_parent, "title": data.title}
 
@@ -275,34 +291,38 @@ async def add_folder(id_parent: uuid.UUID, session: SessionDep, data: FolderSche
 async def add_file(id_parent: uuid.UUID, session: SessionDep, data: ObjAddSchema):
     await resource_object_service.getById(id_parent)
 
-    new_obj = ResourceObjectModel(
-        id=uuid.uuid4(), obj_type=FILE_TYPE.link, title=data.title, href=data.href
+    new_obj_id = uuid.uuid4()
+    new_obj = await resource_object_service.create(
+        id_parent=id_parent,
+        obj_type=FILE_TYPE.link,
+        obj_id=new_obj_id,
+        title=data.title,
+        href=data.href
     )
-    new_link = ResourceLinkModel(
-        id=uuid.uuid4(), parent_id=id_parent, child_id=new_obj.id
-    )
-
-    session.add(new_obj)
-    session.add(new_link)
-    await session.commit()
 
     return {"ok": True, "data": new_obj}
 
 
-@app.post("/{id_link}/change_image")
-async def add_file(id_link: uuid.UUID, session: SessionDep, files: list[UploadFile]):
-    obj = await resource_object_service.getById(id_link)
+@app.post("/{id_obj}/change_image")
+async def change_image(id_obj: uuid.UUID, session: SessionDep, files: list[UploadFile]):
+    obj = await resource_object_service.getById(id_obj)
     file = files[0]
-    print(file)
 
-    if file.filename.split(".")[-1] != "png":
-        raise HTTPException(status_code=400, detail="Not valid PNG")
+    print(file.filename)
 
-    pth = Path("resource/links", f"{obj.id}.png")
+    # if file.filename.split(".")[-1] != "png":
+    #     raise HTTPException(status_code=400, detail="Not valid PNG")
+
+    pth = Path("resource/cust_images", f"{obj.id}.{file.filename.split(".")[-1]}")
     with open(pth, "wb") as f:
         f.write(file.file.read())
+    
+    obj.image = f'resource/cust_images/{obj.id}.{file.filename.split(".")[-1]}'
+    session.add(obj)
+    await session.commit()
 
-    return {"ok": True, "data": pth}
+    return {"ok": True}
+#     return {"ok": True, "data": pth}
 
 
 @app.delete("/{obj_id}")
@@ -317,10 +337,12 @@ async def delete_object(obj_id: uuid.UUID, session: SessionDep):
             if folder_child:  # folder has child
                 for children in folder_child:  # перебрать все вложенные объекты
                     await helper(children.child_id)  # удалить все вложенные объекты
-        elif object_res.obj_type == FILE_TYPE.link:
-            os.remove(Path("resource/links", f"{object_res.id}.png"))
         else:
             pass
+
+        p = Path(object_res.image)
+        if p.exists():
+            os.remove(Path(object_res.image))
 
         await session.execute(
             delete(ResourceObjectModel).where(ResourceObjectModel.id == obj_id)

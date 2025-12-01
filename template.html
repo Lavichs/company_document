@@ -37,7 +37,7 @@
                         {% if item.obj_type == 'file' %}
                         <div class="card col-sm-2 px-0 mx-1 ">
                             <a href="/uploads/{{ item.id }}.pdf">
-                                <img class="card-img-top pt-3" src="/resource/images/pdf.png" alt="Card image cap"></a>
+                                <img class="card-img-top pt-3" src="{{ item.image }}" alt="Card image cap"></a>
                             <div class="card-body px-1 pt-1 pb-0">
                                 <p class="card-title text-center d-flex justify-content-center align-items-center">
                                     <i class="mr-2">{{ item.title }}</i>
@@ -58,7 +58,7 @@
                         {% if item.obj_type == 'folder' %}
                         <div class="card col-sm-2 px-0 mx-1 ">
                             <a href="{{ item.id }}">
-                                <img class="card-img-top pt-3" src="/resource/images/open-folder.png"
+                                <img class="card-img-top pt-3" src="{{ item.image }}"
                                     alt="Card image cap"></a>
                             <div class="card-body px-1 pt-1 pb-0">
                                 <p class="card-title text-center"><i>{{ item.title }}</i></p>
@@ -71,7 +71,7 @@
                         {% else %}
                         <div class="card col-sm-2 px-0 mx-1 ">
                             <a href="{{ item.href }}">
-                                <img class="card-img-top pt-3" src="/resource/links/{{ item.id }}.png"
+                                <img class="card-img-top pt-3" src="{{ item.image }}"
                                     alt="Card image cap"></a>
                             <div class="card-body px-1 pt-1 pb-0">
                                 <p class="card-title text-center"><i>{{ item.title }}</i></p>
