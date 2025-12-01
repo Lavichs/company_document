@@ -341,9 +341,10 @@ async def delete_object(obj_id: uuid.UUID, session: SessionDep):
 async def rename_object(
     obj_id: uuid.UUID, session: SessionDep, data: ObjectRenameSchema
 ):
-    obj = await resource_object_service(obj_id)
+    obj = await resource_object_service.getById(obj_id)
 
     obj.title = data.title
+    session.add(obj)
     await session.commit()
 
     return {"ok": True}
