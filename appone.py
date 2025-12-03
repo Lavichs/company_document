@@ -5,6 +5,7 @@ from sqlalchemy import select, ForeignKey, delete
 import uuid
 import pprint
 import os
+import random
 from pathlib import Path
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends, UploadFile, Request, HTTPException
@@ -72,6 +73,7 @@ class ResourceObjectModel(Base):
     title: Mapped[str] = mapped_column(nullable=False)
     href: Mapped[str] = mapped_column(nullable=True)
     image: Mapped[str] = mapped_column(nullable=False)
+    seq_num: Mapped[int] = mapped_column(nullable=False)
 
 
 class ResourceLinkModel(Base):
@@ -110,6 +112,10 @@ class ObjectRenameSchema(BaseModel):
     title: str
 
 
+class ObjectChangeSeqNumSchema(BaseModel):
+    seq_num: int
+
+
 class ResourceObjectService:
     async def getById(self, id: uuid.UUID) -> ResourceObjectModel:
         async with new_session() as session:
@@ -135,7 +141,8 @@ class ResourceObjectService:
                 obj_type=obj_type,
                 title=title,
                 href=href,
-                image=DEFAULT_IMAGES[obj_type]
+                image=DEFAULT_IMAGES[obj_type],
+                seq_num=random.randint(1, 100)
             )
             new_link = ResourceLinkModel(
                 id=uuid.uuid4(), parent_id=id_parent, child_id=obj_id
@@ -182,7 +189,11 @@ async def get_page(
         child_obj = await resource_object_service.getById(cld.child_id)
         items.append(child_obj)
 
-    items = sorted(items, key=lambda x: x.obj_type, reverse=True)
+    items = sorted(items, key=lambda x: x.seq_num)
+
+    for i in items:
+        print(f"{i.title} - {i.seq_num}")
+
     page_data = {
         "request": request,
         "lists": list(chunks(items, 7)),
@@ -366,6 +377,19 @@ async def rename_object(
     obj = await resource_object_service.getById(obj_id)
 
     obj.title = data.title
+    session.add(obj)
+    await session.commit()
+
+    return {"ok": True}
+
+
+@app.put("/{obj_id}/change_seq_num")
+async def change_seq_num(
+    obj_id: uuid.UUID, session: SessionDep, data: ObjectChangeSeqNumSchema
+):
+    obj = await resource_object_service.getById(obj_id)
+
+    obj.seq_num = data.seq_num
     session.add(obj)
     await session.commit()
 

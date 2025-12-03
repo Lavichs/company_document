@@ -91,10 +91,21 @@
                                 </div>
                                 <p class="card-text text-center large  px-6 pb-4"></p>
                             </div>
-                            <div class="card-footer px-1 py-1 d-flex flex-row">
-                                <a href="/admin/{{ item.id }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
-                                <button onclick="delete_object(event.target)" data="{{ item.id }}"
-                                    class="btn btn-danger btn-sm w-50">Удалить</button>
+                            <div class="card-footer px-1 py-1 d-flex flex-column">
+                                <div class="d-flex">
+                                    <div class="mb-2 d-flex">
+                                        <label for="{{ item.id }}-change-seq-num" class="form-label"></label>
+                                        <input class="form-control form-control-sm mr-1" type="number"
+                                            id="{{ item.id }}-change-seq-num" value="{{ item.seq_num }}">
+                                        <button type="button" class="btn btn-success btn-sm"
+                                            onclick="change_seq_num('{{ item.id }}')">✓</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex">
+                                    <a href="/uploads/{{ item.id }}.pdf" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
+                                    <button onclick="delete_object(event.target)" data="{{ item.id }}"
+                                        class="btn btn-danger btn-sm w-50">Удалить</button>
+                                </div>
                             </div>
                         </div>
                         {% else %}
@@ -136,10 +147,21 @@
                                 </div>
                                 <p class="card-text text-center large  px-6 pb-4"></p>
                             </div>
-                            <div class="card-footer px-1 py-1 d-flex flex-row">
-                                <a href="/admin/{{ item.id }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
-                                <button onclick="delete_object(event.target)" data="{{ item.id }}"
-                                    class="btn btn-danger btn-sm w-50">Удалить</button>
+                            <div class="card-footer px-1 py-1 d-flex flex-column">
+                                <div class="d-flex">
+                                    <div class="mb-2 d-flex">
+                                        <label for="{{ item.id }}-change-seq-num" class="form-label"></label>
+                                        <input class="form-control form-control-sm mr-1" type="number"
+                                            id="{{ item.id }}-change-seq-num" value="{{ item.seq_num }}">
+                                        <button type="button" class="btn btn-success btn-sm"
+                                            onclick="change_seq_num('{{ item.id }}')">✓</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex">
+                                    <a href="/admin/{{ item.id }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
+                                    <button onclick="delete_object(event.target)" data="{{ item.id }}"
+                                        class="btn btn-danger btn-sm w-50">Удалить</button>
+                                </div>
                             </div>
                         </div>
                         {% else %}
@@ -180,10 +202,21 @@
                                 </div>
                                 <p class="card-text text-center large  px-6 pb-4"></p>
                             </div>
-                            <div class="card-footer px-1 py-1 d-flex flex-row">
-                                <a href="{{ item.href }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
-                                <button onclick="delete_object(event.target)" data="{{ item.id }}"
-                                    class="btn btn-danger btn-sm w-50">Удалить</button>
+                            <div class="card-footer px-1 py-1 d-flex flex-column">
+                                <div class="d-flex">
+                                    <div class="mb-2 d-flex">
+                                        <label for="{{ item.id }}-change-seq-num" class="form-label"></label>
+                                        <input class="form-control form-control-sm mr-1" type="number"
+                                            id="{{ item.id }}-change-seq-num" value="{{ item.seq_num }}">
+                                        <button type="button" class="btn btn-success btn-sm"
+                                            onclick="change_seq_num('{{ item.id }}')">✓</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex">
+                                    <a href="{{ item.href }}" class="btn btn-info btn-sm w-50 mr-1">Перейти</a>
+                                    <button onclick="delete_object(event.target)" data="{{ item.id }}"
+                                        class="btn btn-danger btn-sm w-50">Удалить</button>
+                                </div>
                             </div>
                         </div>
                         {% endif %}
@@ -483,7 +516,22 @@
             });
 
             let dta = await resp.json()
-            console.log(dta.data)
+            // console.log(dta.data)
+
+            if (resp.ok) window.location.reload()
+            else alert("Ошибка: " + dta.detail);
+        }
+
+        // ================== ИЗМЕНЕНИЕ ПОРЯДКОВОГО НОМЕРА ================== //
+
+        async function change_seq_num(id) {
+            const seq_num = document.getElementById(`${id}-change-seq-num`).value;
+
+            let resp = await fetch(`/${id}/change_seq_num`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ seq_num: seq_num }),
+            });
 
             if (resp.ok) window.location.reload()
             else alert("Ошибка: " + dta.detail);
